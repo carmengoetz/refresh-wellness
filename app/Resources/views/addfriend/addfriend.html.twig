@@ -1,0 +1,22 @@
+
+
+{% extends 'base.html.twig' %}
+{% block title %}AddFriend!{% endblock %}
+
+{% block body %}
+<h1> Add Friend: </h1>
+  {% for user in users %}
+    {% for objectU in user %}
+        {{ objectU.getName() }}
+        {% for friend in friends %}
+            <br />
+            {{ friend.getEmailUser2() }}
+            <br />
+          {% endfor %}
+        <br />
+    {% endfor %}
+  {% endfor %}
+  
+
+
+{% endblock %}

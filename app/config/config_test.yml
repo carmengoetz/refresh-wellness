@@ -1,0 +1,28 @@
+imports:
+    - { resource: config_dev.yml }
+
+framework:
+    test: ~
+    session:
+        storage_id: session.storage.mock_file
+    profiler:
+        collect: false
+
+web_profiler:
+    toolbar: false
+    intercept_redirects: false
+
+twig:
+    globals:
+        rootDir: "/app_test.php"
+
+swiftmailer:
+    disable_delivery: true
+
+# Doctrine Configuration
+doctrine:
+    dbal:
+        driver: pdo_sqlite
+        dbname: 'refresh_test'
+        charset: UTF8
+        path: '%kernel.project_dir%/var/data/refresh_test.sqlite'

@@ -1,0 +1,396 @@
+{# Displays individual wellness stats #}
+
+{% extends 'base.html.twig' %}
+
+{% block title %}Nearby Wellness Professionals{% endblock %}
+
+{% block stylesheets %}
+{{ parent() }}
+
+
+
+
+{% endblock %}
+
+{% block javascripts %}
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.7.1/Chart.js"></script>
+<script type="text/javascript">
+
+    var params = "{{ params }}";
+</script>
+<script type="text/javascript">
+        var ctx;
+        var ctx2;
+        var wellnessChart;
+        var wellnessChartAvg;
+
+        var dataLine = {
+            mood: {
+                    label: "Mood",
+                    data: [],
+                    backgroundColor: 'rgba(255,255,255,0)',
+                    borderColor: 'rgba(237,109,109,1)',
+                    pointRadius: 7,
+                    pointHoverRadius: 10,
+                    pointBackgroundColor: 'rgba(237,109,109,1)'
+                  },
+            energy: {
+                    label: "Energy",
+                    data: [] ,
+                    backgroundColor: 'rgba(255,255,255,0)',
+                    borderColor: 'rgba(239,198,35,1)',
+                    pointRadius: 7,
+                    pointHoverRadius: 10,
+                    pointBackgroundColor: 'rgba(239,198,35,1)'
+                },
+            sleep: {
+                    label: "Sleep",
+                    data: [],
+                    backgroundColor: 'rgba(255,255,255,0)',
+                    borderColor: 'rgba(35,175,239,1)',
+                    pointRadius: 7,
+                    pointHoverRadius: 10,
+                    pointBackgroundColor: 'rgba(35,175,239,1)'
+                },
+            thoughts:  {
+                    label: "Thoughts",
+                    data: [],
+                    backgroundColor: 'rgba(255,255,255,0)',
+                    borderColor: 'rgba(106,235,119,1)',
+                    pointRadius: 7,
+                    pointHoverRadius: 10,
+                    pointBackgroundColor: 'rgba(106,235,119,1)'
+                }
+        };
+
+
+        var dataAvg = {
+            data: [0,0,0,0]
+        };
+
+
+
+        //Perform AJAX call to retrieve data
+        //Update charts
+        function updateCharts() {
+
+
+                var url = '';
+                var type = '';
+                var val = '';
+                if (params != '')
+                {
+                    type = params.substring(0, params.search("="));
+                    val = params.substring(params.search("=") + 1);
+                    if (params == 'me')
+                    {
+                        type = "me";
+                    }
+
+                    if (type != '') {
+
+                        var invalid = false;
+                        switch (type)
+                        {
+                            case 'me':
+                                url = "../me";
+                                break;
+                            case 'supportee':
+                                url = "../caregiver/" + val;
+                                break;
+                            case 'patient':
+                                url = "../patient/" + val;
+                                break;
+                            case 'orgMember':
+                                orgMemberID = val.substring(0, val.search("&"));
+                                groupID = val.substring(val.search("=") + 1);
+                                url = "../orgMember/" + groupID + "/" + orgMemberID;
+                                break;
+                            default:
+                                invalid = true;
+                                break;
+                        }
+
+                        if (!invalid) {
+                            //Show pineapple
+                            $("#loading").show();
+                            $.ajax(
+                                {
+                                    url: url,
+                                    type: 'GET',
+                                    dataType: 'json',
+
+
+                                    success: function (jsonResponse) {
+                                        //Hide pineapple
+                                    $("#loading").hide();
+
+                                        //Deal with the response
+                                        if (jsonResponse.status == "success") {
+
+                                            if (jsonResponse.data.stats.length != 0) {
+
+                                                $("#chartOneContainer").show();
+                                                $("#chartTwoContainer").show();
+                                            
+                                                $(".errorMsg").hide();
+                                                
+                                                $(".loadedName").text(jsonResponse.data.name);
+
+                                                var totals = [0, 0, 0, 0];
+
+                                                for (i = 0; i < jsonResponse.data.stats.length; i++) {
+                                                    dataLine.mood.data.push({ x: new Date(jsonResponse.data.stats[i].date), y: jsonResponse.data.stats[i].mood });
+                                                    totals[0] += jsonResponse.data.stats[i].mood;
+
+                                                    dataLine.energy.data.push({ x: new Date(jsonResponse.data.stats[i].date), y: jsonResponse.data.stats[i].energy });
+                                                    totals[1] += jsonResponse.data.stats[i].energy;
+
+                                                    dataLine.sleep.data.push({ x: new Date(jsonResponse.data.stats[i].date), y: jsonResponse.data.stats[i].sleep });
+                                                    totals[2] += jsonResponse.data.stats[i].sleep;
+
+                                                    dataLine.thoughts.data.push({ x: new Date(jsonResponse.data.stats[i].date), y: jsonResponse.data.stats[i].thoughts });
+                                                    totals[3] += jsonResponse.data.stats[i].thoughts;
+
+                                                }
+
+                                                for (i = 0; i < totals.length; i++) {
+                                                    dataAvg.data[i] = totals[i] / jsonResponse.data.stats.length;
+                                                }
+
+                                                //dataAvg.data = totals;
+
+
+
+                                                dataLine.mood.data.sort(function (a, b) {
+                                                    return b.x - a.x;
+
+                                                });
+
+                                                dataLine.energy.data.sort(function (a, b) {
+                                                    return b.x - a.x;
+
+                                                });
+
+                                                dataLine.sleep.data.sort(function (a, b) {
+                                                    return b.x - a.x;
+
+                                                });
+
+                                                dataLine.thoughts.data.sort(function (a, b) {
+                                                    return b.x - a.x;
+
+                                                });
+                                                createCharts();
+
+                                                wellnessChart.data.datasets.push(dataLine.mood);
+                                                wellnessChart.data.datasets.push(dataLine.energy);
+                                                wellnessChart.data.datasets.push(dataLine.sleep);
+                                                wellnessChart.data.datasets.push(dataLine.thoughts);
+
+                                                
+
+                                                wellnessChart.update();
+                                                wellnessChartAvg.update();
+                                                
+                                            }
+                                            else
+                                            {
+                                                $("#chartOneContainer").hide();
+                                                $("#chartTwoContainer").hide();
+                                                $('#jsonError').html("Sorry, no statistics available to view");
+                                                $(".errorMsg").show();
+                                            }
+
+                                        }
+                                        //status is failure
+                                        else {
+                                            $("#chartOneContainer").hide();
+                                                $("#chartTwoContainer").hide();
+                                            $('#jsonError').html(jsonResponse.message);
+                                            $(".errorMsg").show();
+                                        }
+                                    }
+                                });
+                        }
+                        else
+                        {
+                                $("#chartOneContainer").hide();
+                                                $("#chartTwoContainer").hide();
+                                $('#jsonError').html("Invalid parameters");
+                                $(".errorMsg").show();
+}
+                    }
+                }
+                else
+                {
+                         $("#chartOneContainer").hide();
+                                                $("#chartTwoContainer").hide();
+                                $('#jsonError').html("Invalid address");
+                                $(".errorMsg").show();
+}
+
+
+
+
+            }
+
+
+
+
+
+        //Load the page and set up the charts
+        $(function () {
+                   $("#chartOneContainer").hide();
+                   $("#chartTwoContainer").hide();
+
+                   updateCharts();
+           
+        });
+
+        function createCharts() {
+             //All data
+            ctx = document.getElementById("wellnessChart").getContext('2d');
+
+            wellnessChart = new Chart(ctx, {
+                responsive: true,
+                type: 'line',
+
+                data: {
+                    datasets: []
+                },
+
+                options: {
+                    layout: {
+                            padding: 25
+                    },
+                    legend: {
+                        position: 'bottom',
+
+                    },
+                    
+                    maintainAspectRatio: false,
+                    scales: {
+                        yAxes: [{
+                            ticks: {
+                                beginAtZero:true,
+                                min: 0,
+                                max: 10
+                            }
+                        }],
+                        xAxes: [{
+                            type: 'time',
+                            distribution: 'linear',
+                            time: {
+
+                                unit: 'day'
+                            }
+                        }]
+
+                    }
+
+                }
+
+            });
+
+            //Averages
+           ctx2 = document.getElementById("wellnessChartAvg").getContext('2d');
+
+            wellnessChartAvg = new Chart(ctx2, {
+                responsive: true,
+                type: 'polarArea',
+
+                data: {
+
+                    datasets:
+                    [
+                        {
+
+                            data: dataAvg.data,
+                            backgroundColor: ['rgba(237,109,109,.6)','rgba(239,198,35,.6)','rgba(35,175,239,.6)','rgba(106,235,119,.6)' ],
+                            borderColor: ['rgba(237,109,109,1)','rgba(239,198,35,1)','rgba(35,175,239,1)','rgba(106,235,119,1)' ],
+
+                        }
+
+                    ],
+                    labels: ["Mood", "Energy", "Sleep", "Thoughts"]
+
+                },
+
+                options: {
+                    layout: {
+                            padding: 25
+                    },
+
+                    startAngle: 0.64 * Math.PI,
+                    legend: {
+                        position: 'bottom',
+
+                    },
+                    maintainAspectRatio: false,
+                    scale: {
+                        ticks: {
+                            min: 0,
+                            max: 10,
+                            stepSize: 1,
+                            beginAtZero: true,
+                            padding: 25
+                        }
+
+                    }
+
+                }
+
+            });
+
+            
+        }
+
+</script>
+{% endblock %}
+
+{% block body %}
+
+
+<div id="mainWrapper" class="col-md-12 col-lg-7">
+    <!-- Add heading for page -->
+    <div id="headerText" class="row rounded bg-light mb-3 p-2 pl-3">
+        <h1>Wellness Statistics</h1>
+    </div>
+    <!-- Add graph of stats using chart.js -->
+
+    <div id="chartOneContainer" class="row rounded bg-light mb-3 p-2 ">
+        <div class="chartheader col-xs-12 col-sm-12">
+            <p class="username">
+                <h2 class="loadedName"></h2>
+                All data
+            </p>
+        </div>
+        <div class="chart-container col-xs-12 col-sm-12">
+
+            <canvas id="wellnessChart" height="500"></canvas>
+        </div>
+    </div>
+
+    <div id="chartTwoContainer" class="row rounded bg-light mb-3 p-2 ">
+        <div class="chartheader col-xs-12 col-sm-12">
+            <p class="username">
+                <h2 class="loadedName"></h2>
+                Averages
+            </p>
+        </div>
+        <div class="chart-container col-xs-12 col-sm-12">
+
+            <canvas id="wellnessChartAvg" height="400"></canvas>
+        </div>
+    </div>
+    <!-- Add toggles for turning on/off the various wellnesses -->
+    <!-- Add message indicating success or failure (hidden) -->
+    <p class="status"></p>
+    <!-- Add error message if needed -->
+    <div class="errorMsg row rounded bg-danger mb-3 p-2" id="jsonError"></div>
+</div>
+
+
+{% endblock %}

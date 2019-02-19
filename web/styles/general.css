@@ -1,0 +1,43 @@
+﻿/* error message styles */
+.errorMsg {
+    border-radius: 5px;
+    display: none;
+    padding: 10px;
+    color: #D8000C;
+    background-color: #FFBABA;
+}
+
+/*Chart styles*/
+
+.chartheader {
+    position: relative;
+    padding-left: 50px;
+
+    height: 75px;
+    width: 950px;
+    background-color: rgba(244,244,244,1);
+    z-index: -5;
+}
+
+.chart-container {
+    position: relative;
+
+    height: 600px;
+    width: 1000px;
+    background-color: rgba(244,244,244,1);
+    z-index: -5;
+
+}
+
+#mainWrapper {
+    position: relative;
+    width: 1000px;
+    margin: auto;
+    background-color: rgba(244,244,244,1);
+    border-radius: 5px;
+    padding: 0 25px 0 25px;
+}
+
+#mainWrapper h1 {
+    padding-top: 5px;
+}
