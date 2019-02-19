@@ -1,0 +1,656 @@
+{# Displays individual wellness stats #}
+
+{% extends 'base.html.twig' %}
+
+{% block title %}Profile{% endblock %}
+
+{% block stylesheets %}
+{{ parent() }}
+
+
+
+
+{% endblock %}
+
+{% block javascripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.7.1/Chart.js"></script>
+<script type="text/javascript">
+
+    var self = "{{ params.self }}";
+	var other = "{{ params.other }}";
+</script>
+<script type="text/javascript">
+//Perform AJAX call to retrieve data
+	function getProfile() {
+
+		if (true) {
+			//Show pineapple
+			$('#profile-image').attr('src', '../../../img/PineAppleRefresh.gif');
+			$.ajax(
+				{
+					url: '../profile/view/' + other,
+					type: 'GET',
+					dataType: 'json',
+
+					statusCode: {
+						404: function () {
+							$('#profile-image').attr('src', '../../../img/sad.jpg');
+							$('#fullname').text('User does not exist.');
+                        }
+					},
+
+					success: function (jsonResponse) {
+
+						//Deal with the response
+                        if (jsonResponse.status == "success") {
+
+                            $("#profileContainer").show();
+							$('.control-panel').show();
+							//Load profile data to page
+							$('#profile-image').attr('src', '../../../img/' + getProfileImageHash(other));
+							$('#fullname').text(jsonResponse.data.user.name);
+
+                            //if WP show relevant info, otherwise don't
+							if (jsonResponse.data.user.isWellnessPro) {
+								$('#pracName').show();
+                                $('#pracName').text(jsonResponse.data.user.isWellnessPro.pracName);
+
+                                $(".wellnessPro").show();
+                                $('#contactNumber').text(jsonResponse.data.user.isWellnessPro.contactNumber);
+
+                                if (!jsonResponse.data.user.isWellnessPro.contactNumber) {
+                                    $('#contactNumberContainer').hide();
+                                }
+
+                                $('#contactEmail').text(jsonResponse.data.user.isWellnessPro.contactEmail);
+                                if (!jsonResponse.data.user.isWellnessPro.contactEmail) {
+                                    $('#contactEmailContainer').hide();
+                                }
+                                $('#contactEmail').attr("href", "mailto:" + jsonResponse.data.user.isWellnessPro.contactEmail);
+                                $('#website').text(jsonResponse.data.user.isWellnessPro.website);
+                                if (!jsonResponse.data.user.isWellnessPro.website) {
+                                    $('#websiteContainer').hide();
+                                }
+                                $('#website').attr("href", jsonResponse.data.user.isWellnessPro.website);
+                                if ($(window).width() < 992) {
+													$(".map-button").show();
+													$(".map-image").addClass("collapse");
+												}
+												else {
+													// do something for big screens
+													$(".map-button").hide();
+													$(".map-image").removeClass("collapse");
+												}
+
+								$('#numSupporters').hide();
+								$('#numSupportees').hide();
+							}
+							else {
+								$('#pracName').hide();
+								$('#numSupporters').show();
+								$('#numSupporters').html('<span class="fa fa-heart-o mr-1"></span>Number of supporters: ' + jsonResponse.data.user.numSupporters);
+								$('#numSupportees').show();
+								$('#numSupportees').html('<span class="fa fa-star-o mr-1"></span>Number of people supported: ' + jsonResponse.data.user.numSupportees);
+							}
+
+							$('#city').text(jsonResponse.data.user.city);
+							$('#numFriends').html('<span class="fa fa-user-circle-o mr-1"></span>Friends: ' + jsonResponse.data.user.numFriends);
+
+							//send message button
+							if (!jsonResponse.data.self && (jsonResponse.data.relationships.isFriend || jsonResponse.data.relationships.isSupporter
+								|| jsonResponse.data.relationships.isSupportee || jsonResponse.data.relationships.isWellnessProRel)) {
+								$('.send-message').show();
+							}
+							else {
+								$('.send-message').hide();
+							}
+
+							//add friend button
+							if (!jsonResponse.data.self) {
+								$('.add-friend').show();
+								if (!jsonResponse.data.relationships.isFriend) {
+									$('.add-friend').prop('disabled', false);
+                                    $('#control-panel-desktop .add-friend').html('<span class="fa fa-user-plus mr-3"></span>Add friend');
+                                    $('#control-panel-mobile .add-friend').html('<p class="text-center"><span class="fa fa-user-plus mb-1 fa-2x"></span><br/>Add friend</p>');
+								}
+								else {
+									$('.add-friend').prop('disabled', true);
+                                    $('#control-panel-desktop .add-friend').html('<span class="fa fa-user-plus mr-3"></span>Friends');
+                                    $('#control-panel-mobile .add-friend').html('<p class="text-center"><span class="fa fa-user-plus mb-1 fa-2x"></span><br/>Friends</p>');
+								}
+							}
+							else {
+								$('.add-friend').hide();
+							}
+
+							//support this person button
+							if (!jsonResponse.data.self && !jsonResponse.data.user.isWellnessPro && !jsonResponse.data.selfWellPro) {
+								$('.add-supportee').show();
+								if (!jsonResponse.data.relationships.isSupportee) {
+									$('.add-supportee').prop('disabled', false);
+                                    $('#control-panel-desktop .add-supportee').html('<span class="fa fa-heart-o mr-3"></span>Support this person');
+                                    $('#control-panel-mobile .add-supportee').html('<p class="text-center"><span class="fa fa-heart-o mb-1 fa-2x"></span><br/>Support this person</p>');
+								}
+								else {
+									$('.add-supportee').prop('disabled', true);
+                                    $('#control-panel-desktop .add-supportee').html('<span class="fa fa-heart-o mr-3"></span>Supporting');
+                                    $('#control-panel-mobile .add-supportee').html('<p class="text-center"><span class="fa fa-heart-o mb-1 fa-2x"></span><br/>Supporting</p>');
+								}
+							}
+							else {
+								$('.add-supportee').hide();
+							}
+
+							//ask for support button
+							if (!jsonResponse.data.self && !jsonResponse.data.user.isWellnessPro && !jsonResponse.data.selfWellPro) {
+								$('.add-supporter').show();
+								if (!jsonResponse.data.relationships.isSupporter) {
+									$('.add-supporter').prop('disabled', false);
+                                    $('#control-panel-desktop .add-supporter').html('<span class="fa fa-star-o mr-3"></span>Ask for support');
+                                    $('#control-panel-mobile .add-supporter').html('<p class="text-center"><span class="fa fa-star-o mb-1 fa-2x"></span><br/>Ask for support</p>');
+								}
+								else {
+									$('.add-supporter').prop('disabled', true);
+                                    $('#control-panel-desktop .add-supporter').html('<span class="fa fa-star-o mr-3"></span>Supporter');
+                                    $('#control-panel-mobile .add-supporter').html('<p class="text-center"><span class="fa fa-star-o mb-1 fa-2x"></span><br/>Supporter</p>');
+								}
+							}
+							else {
+								$('.add-supporter').hide();
+							}
+
+							//view stats button
+							if (jsonResponse.data.relationships.isSupportee || (jsonResponse.data.relationships.isWellnessProRel && jsonResponse.data.selfWellPro)) {
+								$('.view-stats').show();
+							}
+							else {
+								$('.view-stats').hide();
+							}
+
+							//ask to be wp button
+							if (!jsonResponse.data.self && !jsonResponse.data.selfWellPro && jsonResponse.data.user.isWellnessPro) {
+								$('.add-wp').show();
+								if (!jsonResponse.data.relationships.isWellnessProRel) {
+									$('.add-wp').prop('disabled', false);
+                                    $('#control-panel-desktop .add-wp').html('<span class="fa fa-user-md mr-3"></span>Ask to be wellness professional');
+                                    $('#control-panel-mobile .add-wp').html('<p class="text-center"><span class="fa fa-user-md mb-1 fa-2x"></span><br/>Ask to be wellness professional</p>');
+								}
+								else {
+									$('.add-wp').prop('disabled', true);
+                                    $('#control-panel-desktop .add-wp').html('<span class="fa fa-user-md mr-3"></span>Wellness professional');
+                                    $('#control-panel-mobile .add-wp').html('<p class="text-center"><span class="fa fa-user-md mb-1 fa-2x"></span><br/>Wellness professional</p>');
+								}
+							}
+							else {
+								$('.add-wp').hide();
+							}
+
+							//ask patient button
+							if (!jsonResponse.data.self && jsonResponse.data.selfWellPro && !jsonResponse.data.user.isWellnessPro) {
+								$('.add-patient').show();
+								if (!jsonResponse.data.relationships.isWellnessProRel) {
+									$('.add-patient').prop('disabled', false);
+                                    $('#control-panel-desktop .add-patient').html('<span class="fa fa-heartbeat mr-3"></span>Add patient');
+                                    $('#control-panel-mobile .add-patient').html('<p class="text-center"><span class="fa fa-heartbeat mb-1 fa-2x"></span><br/>Add patient</p>');
+								}
+								else {
+									$('.add-patient').prop('disabled', true);
+                                    $('#control-panel-desktop .add-patient').html('<span class="fa fa-heartbeat mr-3"></span>Patient');
+                                    $('#control-panel-mobile .add-patient').html('<p class="text-center"><span class="fa fa-heartbeat mb-1 fa-2x"></span><br/>Patient</p>');
+								}
+							}
+							else {
+								$('.add-patient').hide();
+							}
+                            //Your own profile, different buttons appeaer
+							if (jsonResponse.data.self) {
+								$('.view-friends').show();
+								$('.view-groups').show();
+								if (jsonResponse.data.selfWellPro) {
+									$('.view-patients').show();
+									$('.view-allstats').show();
+									$('.view-wps').hide();
+								}
+								else {
+									$('.view-patients').hide();
+									$('.view-allstats').hide();
+									$('.view-wps').show();
+								}
+							}
+							else {
+								$('.view-friends').hide();
+								$('.view-groups').hide();
+								$('.view-patients').hide();
+								$('.view-allstats').hide();
+								$('.view-wps').hide();
+							}
+
+						}
+						//status is failure
+						else {
+							$('#profile-image').attr('src', '../../../img/sad.jpg');
+							$('#fullname').text(jsonResponse.message);
+						}
+					}
+				});
+		}
+    //Invalid params
+		else {
+			$('#profile-image').attr('src', '../../../img/sad.jpg');
+			$('#fullname').text("Invalid parameters");
+		}
+	}
+
+    /**
+     * Function to perform add friend AJAX request
+     */
+    function addFriend()
+    {
+        $.ajax(
+            {
+                url: '../relationship/addFriend/' + other,
+                type: 'GET',
+                dataType: 'json',
+
+                success: function (jsonResponse) {
+
+                    //Deal with the response
+                    if (jsonResponse.status == "success")
+                    {
+                        $(".jsonError").hide();
+                        location.reload();
+                    }
+                    else
+                    {
+                        $(".jsonError").show();
+                        $(".jsonError").text(jsonResponse.reason);
+                    }
+                }
+            }
+        );
+    }
+
+        /** TODO:
+     * Function to open message send interface
+     */
+    function sendMessage()
+    {
+        $('#recipient-name').text("Send a message to " + $('#fullname').text() + ":");
+        recieverGuid = '{{ params.other }}';
+        senderGuid = '{{ params.self }}';
+    }
+
+        /** TODO:
+     * Function to display list of friends
+     */
+     function viewFriends()
+    {
+        //$.ajax(
+        //    {
+        //        url: '../profile/view/' + other,
+        //        type: 'GET',
+        //        dataType: 'json',
+
+        //        success: function (jsonResponse) {
+
+        //            //Deal with the response
+        //            if (jsonResponse.status == "success") {
+        //            }
+        //            else {
+        //            }
+        //        }
+        //    }
+        //);
+    }
+
+        /** TODO:
+     * Function to display list of patients
+     */
+     function viewPatients()
+    {
+        //$.ajax(
+        //    {
+        //        url: '../profile/view/' + other,
+        //        type: 'GET',
+        //        dataType: 'json',
+
+        //        success: function (jsonResponse) {
+
+        //            //Deal with the response
+        //            if (jsonResponse.status == "success") {
+        //            }
+        //            else {
+        //            }
+        //        }
+        //    }
+        //);
+     }
+
+        /** TODO:
+     * Function to view groups
+     */
+     function viewGroups()
+    {
+        //$.ajax(
+        //    {
+        //        url: '../profile/view/' + other,
+        //        type: 'GET',
+        //        dataType: 'json',
+
+        //        success: function (jsonResponse) {
+
+        //            //Deal with the response
+        //            if (jsonResponse.status == "success") {
+        //            }
+        //            else {
+        //            }
+        //        }
+        //    }
+        //);
+     }
+
+        /** TODO:
+     * Function to view WPs
+     */
+    function viewWPs()
+    {
+        //$.ajax(
+        //    {
+        //        url: '../profile/view/' + other,
+        //        type: 'GET',
+        //        dataType: 'json',
+
+        //        success: function (jsonResponse) {
+
+        //            //Deal with the response
+        //            if (jsonResponse.status == "success") {
+        //            }
+        //            else {
+        //            }
+        //        }
+        //    }
+        //);
+    }
+
+        /**
+     * Function to perform add supportee AJAX request
+     */
+    function addSupportee()
+    {
+        $.ajax(
+            {
+                url: '../relationship/addSupportee/' + other,
+                type: 'GET',
+                dataType: 'json',
+
+                success: function (jsonResponse) {
+
+                    //Deal with the response
+                    if (jsonResponse.status == "success")
+                    {
+                        $(".jsonError").hide();
+                        location.reload();
+                    }
+                    else
+                    {
+                        $(".jsonError").show();
+                        $(".jsonError").text(jsonResponse.reason);
+                    }
+                }
+            }
+        );
+    }
+
+        /**
+     * Function to perform add supporter AJAX request
+     */
+    function addSupporter()
+    {
+        $.ajax(
+            {
+                url: '../relationship/addSupporter/' + other,
+                type: 'GET',
+                dataType: 'json',
+
+                success: function (jsonResponse) {
+
+                    //Deal with the response
+                    if (jsonResponse.status == "success")
+                    {
+                        $(".jsonError").hide();
+                        location.reload();
+                    }
+                    else
+                    {
+                        $(".jsonError").show();
+                        $(".jsonError").text(jsonResponse.reason);
+                    }
+                }
+            }
+        );
+    }
+
+        /**
+     * Function to load stats page for this user
+     */
+    function viewStats()
+    {
+        location.href = "../stats/view/{{ params.statsLink }}=" + other;
+    }
+
+        /**
+     * Function to perform add WP AJAX request
+     */
+    function addWP()
+    {
+        $.ajax(
+            {
+                url: '../relationship/addWellnessProfessional/' + other,
+                type: 'GET',
+                dataType: 'json',
+
+                success: function (jsonResponse) {
+
+                    //Deal with the response
+                    if (jsonResponse.status == "success")
+                    {
+                        $(".jsonError").hide();
+                        location.reload();
+                    }
+                    else
+                    {
+                        $(".jsonError").show();
+                        $(".jsonError").text(jsonResponse.reason);
+                    }
+                }
+            }
+        );
+    }
+
+        /**
+     * Function to perform add patient AJAX request
+     */
+    function addPatient()
+    {
+        $.ajax(
+            {
+                url: '../relationship/addClient/' + other,
+                type: 'GET',
+                dataType: 'json',
+
+                success: function (jsonResponse) {
+
+                    //Deal with the response
+                    if (jsonResponse.status == "success")
+                    {
+                        $(".jsonError").hide();
+                        location.reload();
+                    }
+                    else
+                    {
+                        $(".jsonError").show();
+                        $(".jsonError").text(jsonResponse.reason);
+                    }
+                }
+            }
+        );
+    }
+
+        /**
+     * Function to load aggregate stats page
+     */
+    function viewAllStats()
+    {
+        location.href = "../stats/view/patientAll";
+    }
+
+    $(window).resize(function () {
+
+        if ($(window).width() < 992) {
+            $(".map-button").show();
+            $(".map-image").addClass("collapse");
+        }
+        else {
+            $(".map-button").hide();
+            $(".map-image").removeClass("collapse");
+        }
+    });
+
+
+//Load the page and set up the charts
+	$(function () {
+
+		$('#loading').hide();
+		$('.control-panel-button').hide();
+		var error = "{{ params.error }}";
+		if (error) {
+			$('#profile-image').attr('src', '../../../img/sad.jpg');
+			$('#fullname').text(error);
+		}
+		else {
+
+			getProfile();
+		}
+
+});
+
+
+
+
+</script>
+{% endblock %}
+
+{% block body %}
+
+
+<div id="mainWrapper" class="col-md-12 col-lg-12">
+    <!-- Add heading for page -->
+    <div class="row">
+        <div class="col-lg-8 col-md-12">
+            <div class="row col-md-12 col-lg-12">
+                <div id="headerText" class="rounded bg-light mb-3 p-2 pl-3  col-md-12 col-lg-12">
+                    <div class="row">
+                        <img id="profile-image" class="rounded-circle col-md-3 img-responsive" style="height: 90%" />
+                        <h1 id="fullname" class="col-sm-9">Profile loading...</h1>
+                    </div>
+                </div>
+            </div>
+            <!--Mobile control panel-->
+            <div class="row col-md-12 d-block d-lg-none">
+                <div id="control-panel-mobile" class="d-xs-block d-sm-flex control-panel rounded bg-light mb-3 p-2  mb-1 " style="display: none; justify-content: space-around">
+                    <div class="errorMsg row rounded bg-danger mb-3 p-2 jsonError "></div>
+                    <button onclick="sendMessage()" class="send-message btn btn-info col-lg-12 col-md-2 mb-1 control-panel-button" data-toggle="modal" data-target="#send-message-modal"><p class="text-center"><span class="fa fa-envelope-o fa-2x"></span><br />Send a message</p></button>
+                    <button onclick="addWP()" class="add-wp btn btn-info col-lg-12 col-md-2 mb-1 control-panel-button"><p class="text-center"><span class="fa fa-user-md fa-2x"></span><br />Ask to be wellness professional</p></button>
+                    <button onclick="addPatient()" class="add-patient btn btn-info col-lg-12 col-md-2 mb-1 control-panel-button"><p class="text-center"><span class="fa fa-heartbeat fa-2x"></span><br />Add patient</p></button>
+                    <button onclick="addFriend()" class="add-friend btn btn-info col-lg-12 col-md-2 mb-1 control-panel-button"><p class="text-center"><span class="fa fa-user-plus fa-2x"></span><br />Add friend</p></button>
+                    <button onclick="addSupportee()" class="add-supportee btn btn-info col-lg-12 col-md-2 mb-1 control-panel-button"><p class="text-center"><span class="fa fa-heart-o fa-2x"></span><br />Support this person</p></button>
+                    <button onclick="addSupporter()" class="add-supporter btn btn-info col-lg-12 col-md-2 mb-1 control-panel-button"><p class="text-center"><span class="fa fa-star-o fa-2x"></span><br />Ask for support</p></button>
+                    <button onclick="viewStats()" class="view-stats btn btn-info col-lg-12 col-md-2 mb-1 control-panel-button"><p class="text-center"><span class="fa fa-area-chart fa-2x"></span><br />View stats</p></button>
+                    <button onclick="viewFriends()" class="view-friends btn btn-info col-md-2  mb-1 control-panel-button"><p class="text-center"><span class="fa fa-user-circle-o fa-2x"></span><br />View friends</p></button>
+                    <button onclick="viewGroups()" class="view-groups btn btn-info col-md-2 mb-1 control-panel-button"><p class="text-center"><span class="fa fa-group fa-2x"></span><br />View groups</p></button>
+                    <button onclick="viewWPs()" class="view-wps btn btn-info col-md-2 mb-1 control-panel-button"><p class="text-center"><span class="fa fa-medkit fa-2x"></span><br />View wellness professionals</p></button>
+                    <button onclick="viewPatients()" class="view-patients btn btn-info col-lg-12 col-md-2 mb-1 control-panel-button"><p class="text-center"><span class="fa fa-stethoscope fa-2x"></span><br />View patients</p></button>
+                    <button onclick="viewAllStats()" class="view-allstats btn btn-info col-lg-12 col-md-2 mb-1 control-panel-button"><p class="text-center"><span class="fa fa-pie-chart fa-2x"></span><br />View all patient stats</p></button>
+
+                </div>
+            </div>
+            <!--Profile data-->
+            <div id="profileContainer" class="row col-md-12 col-lg-12" style="display: none;">
+                <div id="profile_data" class="rounded bg-light mb-3 p-2  col-md-12 col-lg-12">
+
+                    <div class=" row">
+                        <div class="col-md-12 col-lg-7">
+                            <div class="wellnessPro" style="display: none">
+                                <div id="pracNameContainer"><span id="pracName" class="practiceName font-weight-bold h5"></span></div>
+
+                                <div id="contactNumberContainer"><span class="fa fa-phone mr-2"></span><span id="contactNumber" class="contactNumber"></span></div>
+
+                                <div id="contactEmailContainer">
+                                    <span class="fa fa-envelope-o mr-1"></span>
+                                    <span class="contactEmail">
+                                        <a id="contactEmail" target="_blank"></a>
+                                    </span>
+                                </div>
+
+                                <div id="websiteContainer">
+                                    <span class="fa fa-desktop mr-1"></span>
+                                    <span id="website" class="website">
+                                        <a id="website" target="_blank"></a>
+                                    </span>
+                                </div>
+                            </div>
+                            <div  ><span class="fa fa-building-o mr-2"></span><span id="city"></span></div>
+                            <div id="numFriends"></div>
+                            <div id="numSupporters"></div>
+                            <div  id="numSupportees"></div>
+                        </div>
+                        <div class="col-md-12 col-lg-5 wellnessPro" style="display: none">
+                            <a class="btn btn-primary bg-info rounded map-button showmap" data-target="#map" data-toggle="collapse" href="#" role="button" aria-expanded="false" aria-controls="map"><span class="fa fa-map-marker" style="font-size: large"></span></a>
+                            <div id="map" data-toggle="collapse" class="collapse mt-1 map-image">
+                                <img src="../../../img/map.JPG" class="rounded img-fluid border border-dark map" />
+                            </div>
+
+                        </div>
+
+
+
+
+
+
+
+                    </div>
+
+                </div>
+            </div>
+        </div>
+        <!--Desktop control panel-->
+        <div class="col-lg-3 d-none d-lg-block">
+            <div id="control-panel-desktop" class="control-panel rounded bg-light mb-3 p-2  mb-1 " style="display: none">
+                <div class="errorMsg row rounded bg-danger mb-3 p-2 jsonError"></div>
+                <button onclick="sendMessage()" class="send-message btn btn-info col-lg-12 col-md-2 mb-1 control-panel-button" data-toggle="modal" data-target="#send-message-modal"><span class="fa fa-envelope-o mr-3"></span>Send a message</button>
+                <button onclick="addWP()" class="add-wp btn btn-info col-lg-12 col-md-2 mb-1 control-panel-button"><span class="fa fa-user-md mr-3"></span>Ask to be wellness professional</button>
+                <button onclick="addPatient()" class="add-patient btn btn-info col-lg-12 col-md-2 mb-1 control-panel-button"><span class="fa fa-heartbeat mr-3"></span>Add patient</button>
+                <button onclick="addFriend()" class="add-friend btn btn-info col-lg-12 col-md-2 mb-1 control-panel-button"><span class="fa fa-user-plus mr-3"></span>Add friend</button>
+                <button onclick="addSupportee()" class="add-supportee btn btn-info col-lg-12 col-md-2 mb-1 control-panel-button"><span class="fa fa-heart-o mr-3"></span>Support this person</button>
+                <button onclick="addSupporter()" class="add-supporter btn btn-info col-lg-12 col-md-2 mb-1 control-panel-button"><span class="fa fa-star-o mr-3"></span>Ask for support</button>
+                <button onclick="viewStats()" class="view-stats btn btn-info col-lg-12 col-md-2 mb-1 control-panel-button"><span class="fa fa-area-chart mr-3"></span>View stats</button>
+                <button onclick="viewFriends()" class="view-friends btn btn-info col-lg-12 col-md-2 mb-1 control-panel-button"><span class="fa fa-user-circle-o mr-3"></span>View friends</button>
+                <button onclick="viewGroups()" class="view-groups btn btn-info col-lg-12 col-md-2 mb-1 control-panel-button"><span class="fa fa-group mr-3"></span>View groups</button>
+                <button onclick="viewWPs()" class="view-wps btn btn-info col-lg-12 col-md-2 mb-1 control-panel-button"><span class="fa fa-medkit mr-3"></span>View wellness professionals</button>
+                <button onclick="viewPatients()" class="view-patients btn btn-info col-lg-12 col-md-2 mb-1 control-panel-button"><span class="fa fa-stethoscope mr-3"></span>View patients</button>
+                <button onclick="viewAllStats()" class="view-allstats btn btn-info col-lg-12 col-md-2 mb-1 control-panel-button"><span class="fa fa-pie-chart mr-3"></span>View all patient stats</button>
+
+            </div>
+        </div>
+    </div>
+    <!-- Add toggles for turning on/off the various wellnesses -->
+    <!-- Add message indicating success or failure (hidden) -->
+    <p class="status"></p>
+    <!-- Add error message if needed -->
+
+</div>
+
+
+
+
+{% endblock %}

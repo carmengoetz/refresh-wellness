@@ -1,0 +1,48 @@
+app:
+    resource: '@AppBundle/Controller/'
+    type: annotation
+
+root:
+    path: /
+    defaults:
+        _controller: FrameworkBundle:Redirect:urlRedirect
+        path: /register
+        permanent: true
+
+
+addFriend:
+    resource: '@AppBundle/Controller/RelationshipController.php'
+    type: annotation
+addSupporter:
+    resource: '@AppBundle/Controller/RelationshipController.php'
+    type: annotation
+addSupportee:
+    resource: '@AppBundle/Controller/RelationshipController.php'
+    type: annotation
+
+view:
+    resource: '@AppBundle/Controller/WellnessProfessionalsController.php'
+    type: annotation
+
+stats:
+    resource: '@AppBundle/Controller/UserStatController.php'
+    type: annotation
+
+login:
+    resource: '@AppBundle/Controller/AuthenticationController.php'
+    type: annotation
+
+logout:
+    path: /authenticate/logout
+
+nearby:
+    resource: '@AppBundle/Controller/WellnessProfessionalsController.php'
+    type: annotation
+
+message:
+    resource: '@AppBundle/Controller/MessageController.php'
+    type: annotation
+
+profile:
+    resource: '@AppBundle/Controller/ProfileController.php'
+    type: annotation

@@ -1,0 +1,294 @@
+{# Displays nearby wellness professionals #}
+{% extends 'base.html.twig' %}
+{% block title %}Search Results{% endblock %}
+{% block stylesheets %}
+{{ parent() }}
+
+
+{% endblock %}
+{% block javascripts %}
+<script type="text/javascript">
+    var DOING_AJAX = false;
+    var resizing;
+
+    //Variables for changing between desktop and mobile
+    //(helping with paging vs infinte scroll
+    var isDesktop = false;
+    var previousScreen = false;
+
+    function checkDesktop() {
+        previousScreen = isDesktop;
+        isDesktop = $(window).width() > 992;
+    }
+
+    //Variable to decide which page to show
+    var pageNum = 1;
+
+    //Make AJAX call to wellness controller here to get list of nearby wellness professionals
+    var viewModel = {
+        results: ko.observableArray(),
+        getSearchResults: function () {
+
+            //Ensures that the loads do not double load
+            if (isDesktop) {
+                DOING_AJAX = false;
+                viewModel.results.removeAll();
+            }
+
+            //if the page number has been decremented past 1, change it to 1
+            if (pageNum < 1) {
+                pageNum = 1;
+            }
+
+            //getting the search criteria passed through the session
+            var criteria = sessionStorage.getItem('criteria');
+
+            //show the loading pineapple
+            $("#loading").show();
+            //ensure that the error message is hidden
+            $(".errorMsg").hide();
+            //hide the search results div
+            $("#mainWrapper").hide();
+
+            //set the header to show what is being searched for
+            $("#searched-item").text('Search results for \"' + criteria + '\"');
+
+            //make the ajax call
+            $.ajax(
+                {
+                    url: '../search/' + pageNum + '/' + criteria,
+                    type: 'GET',
+                    dataType: 'json',
+
+                    success: function (jsonResponse) {
+                        //hide the loading pineapple
+                        $("#loading").hide();
+
+                        //show the search results div
+                        $("#mainWrapper").show();
+
+                        //Deal with the response - success
+                        if (jsonResponse.status == "success") {
+                            //if there are actual results returned
+                            if (jsonResponse.data.objects.length > 0) {
+
+                                //showing the nav links
+                                $("#pagination-holder").addClass("d-lg-block");
+                                $("#next").show();
+                                $("#prev").show();
+
+                                //for infinite scroll
+                                if ($(window).width() >= 992) {
+                                    viewModel.results.removeAll();
+                                }
+
+                                //loop through the objects passed back to add to the view model
+                                for (var i = 0; i < jsonResponse.data.objects.length; i++) {
+                                    viewModel.results.push(jsonResponse.data.objects[i]);
+                                }
+
+                                //Check for nav arrows
+                                showNavArrows(jsonResponse.data.firstPage, jsonResponse.data.lastPage);
+
+                            }
+							
+							loadPictures();
+                        }
+
+                        //status is failure
+                        else {
+                            $('#jsonError').html(jsonResponse.message);
+                            if ($('#jsonError').text() != "Invalid page request") {
+                                $(".errorMsg").show();
+                            }
+
+                        }
+                    }
+                })
+
+        }
+    };
+
+    /**
+     * method to determine whether or not to display the nav arrows
+     * @param firstPage
+     * @param lastPage
+     */
+    function showNavArrows(firstPage, lastPage) {
+        //show just previous
+        if (!firstPage && lastPage) {
+            $("#next").hide();
+			$("#prev").show();
+            $("#pagination-holder").addClass("d-lg-block");
+        }
+
+		//show just next
+		if (firstPage && !lastPage) {
+            $("#next").show();
+			$("#prev").hide();
+            $("#pagination-holder").addClass("d-lg-block");
+        }
+
+		//show both arrows
+		if (!firstPage && !lastPage) {
+            $("#next").show();
+			$("#prev").show();
+            $("#pagination-holder").addClass("d-lg-block");
+        }
+
+        //hide the div since only one page
+        if (firstPage && lastPage) {
+            $("#pagination-holder").removeClass("d-lg-block");
+        }
+
+    }
+
+    /**
+     * function to load the profile pictures
+     */
+	function loadPictures() {
+		var div = document.getElementsByClassName('search-result');
+
+        // Count the number of image elements and switch alt and src
+        var i = div.length;
+
+		//loop through all the img tags and use the guid stored in the alt 
+		//with the getProfileImageHash function to set the src
+		while (i--) {
+			var image = div[i].getElementsByTagName('img');
+            image[0].src = '../../../img/' + getProfileImageHash(image[0].alt);
+        }
+    }
+
+    //Functionality to perform once the page loads
+    $(function () {
+        ko.applyBindings(viewModel);
+        viewModel.getSearchResults();
+
+        //hide the div with the search results
+        $("#mainWrapper").hide();
+
+        //Click handler for next
+		$("#next").click(function () {
+
+            pageNum++;
+            //if (pageNum > totalPages)
+            //{
+            //    pageNum = totalPages;
+            //}
+
+            //call the get search results again
+            viewModel.getSearchResults();
+        });
+
+        //Click handler for prev
+		$("#prev").click(function () {
+
+            pageNum--;
+            if (pageNum < 1) {
+                pageNum = 1;
+            }
+
+            //call the get search results again
+            viewModel.getSearchResults();
+        });
+
+    });
+</script>
+<script>
+    //handles infinite scrolling
+
+    //Sets some styles and changes things depending on screen size
+    $(window).resize(function () {
+
+        //This chunk lets the page reload when the page changes size,
+        //BUT only does it once the page has stopped resizing for 1 second
+        clearTimeout(resizing);
+
+        resizing = setTimeout(function () {
+            checkDesktop();
+
+            if (previousScreen != isDesktop) {
+                viewModel.results.removeAll();
+                pageNum = 0;
+                viewModel.getSearchResults();
+            }
+        }, 1000);
+
+
+    });
+
+    checkDesktop();
+
+    //Gets the height of the page for the infinite scroll functionality
+    function getDocHeight() {
+        var D = document;
+        return Math.max(
+            D.body.scrollHeight, D.documentElement.scrollHeight,
+            D.body.offsetHeight, D.documentElement.offsetHeight,
+            D.body.clientHeight, D.documentElement.clientHeight
+        );
+    }
+
+    $(window).scroll(function () {
+        if ($(window).width() < 992) {
+            if ($(window).scrollTop() + $(window).height() == getDocHeight()) {
+                pageNum++;
+                viewModel.getSearchResults();
+            }
+        }
+    });
+
+</script>
+{% endblock %}
+{% block body %}
+
+<div id="mainWrapper" class="col-md-12 col-lg-7">
+    <!-- Add heading for page -->
+    <div id="headerText" class="row rounded bg-light mb-3 p-2 pl-3">
+        <h1 id="searched-item">Search Results for</h1>
+    </div>
+    <!-- Add list of search results using knockout -->
+    <div id="search-results" data-bind="foreach: results">
+
+        <div class="search-result row rounded bg-light mb-3 p-2">
+            <div class="col-lg-2">
+                <img id="profile-image" class="rounded-circle" data-bind="attr:{alt: objectData.id}" style="height:100px; width:100px" src="" />
+            </div>
+            <div class="col-md-12 col-lg-7">
+                <div>
+                    <span class="fa fa-user-circle-o mr-1"></span>
+                    <a class="search-results-name font-weight-bold h5" data-bind="text: objectData.name, attr:{href:'../profile/' +objectData.id}"></a>
+                </div>
+                <div><span class="fa fa-building-o mr-1"></span><span class="search-results-city" data-bind="text: objectData.city"></span> </div>
+                <!-- ko if: type == "wellnessPro" -->
+                <div><span class="fa fa-user-md mr-1"></span><span class="" data-bind="text: objectData.practiceName"></span> </div>
+                <div><span class="fa fa-phone mr-1"></span><span class="" data-bind="text: objectData.contactNumber"></span> </div>
+                <div><span class="fa fa-envelope-o mr-1"></span><a target="_blank" data-bind="text: objectData.contactEmail, attr:{href:'mailto:' + objectData.email}"></a> </div>
+                <!-- ko if : objectData.webiste -->
+                <div><span class="fa fa-desktop mr-1"></span><a target="_blank" data-bind="text: objectData.website, attr:{href:objectData.website}"></a> </div>
+                <!-- /ko-->
+                <!-- /ko-->
+
+            </div>
+
+        </div>
+    </div>
+    <!-- Add message indicating success or failure (hidden) -->
+    <div class="status"></div>
+    <!-- Add error message if needed -->
+    <div class="errorMsg row rounded bg-danger mb-3 p-2" id="jsonError"></div>
+    <!-- Add navigation arrows that are only visible if needed -->
+    <div id="pagination-holder" class="row rounded bg-light mb-3 p-2 d-none">
+        <ul class="pagination justify-content-center ">
+            <li class="page-item" id="prev">
+                <a href="#" class="page-link"><span class="fa fa-chevron-left"></span> Previous</a>
+            </li>
+            <li id="next" class="page-item">
+                <a href="#" class="page-link">Next <span class="fa fa-chevron-right"></span></a>
+            </li>
+        </ul>
+
+    </div>
+</div>
+{% endblock %}

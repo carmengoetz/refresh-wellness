@@ -1,0 +1,166 @@
+{% extends 'base.html.twig' %}
+{% block title %}How Are You Feeling?{% endblock %}
+{% block stylesheets %}
+<link type="text/css" href="../../../styles/sliders.css" rel="stylesheet" />
+{{ parent() }}
+
+{% endblock %}
+
+{% block javascripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.20.1/moment.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.7.1/Chart.js"></script>
+<script type="text/javascript">
+
+</script>
+<script type="text/javascript">
+    //Perform AJAX call to retrieve data
+    function getWellnessQuestions() {
+
+        if (true) {
+            $.ajax(
+                {
+                    url: '../howareyoufeeling/view',
+                    type: 'GET',
+                    dataType: 'json',
+
+                    success: function (jsonResponse) {
+
+                        //Deal with the response
+                        if (jsonResponse.status == "success") {
+
+                            //hide the loading pineapple
+                            $('#loading').hide();
+
+                            //hide error message
+                            $('.jsonError').hide();
+
+                            //show the form
+                            $('#wellnessForm').show();
+
+                            //update heading with welcome and users name
+                            $('#welcome').text('Welcome ' + jsonResponse.data.userName + '! ' + jsonResponse.data.contentHead.title);
+
+                            //loop through the inputs passed through and set them on the page
+                            for (var i = 0; i < jsonResponse.data.contentBody.inputs.length; i++) {
+                                var name = jsonResponse.data.contentBody.inputs[i].name;
+                                var type = jsonResponse.data.contentBody.inputs[i].type;
+                                var min = jsonResponse.data.contentBody.inputs[i].min;
+                                var max = jsonResponse.data.contentBody.inputs[i].max;
+                                var value = jsonResponse.data.contentBody.inputs[i].value;
+                                //append to the dive with the corresponding name, adding a label and an input
+                                $('div#' + name).append(
+                                    $('<label/>', { for: name, class: 'col-lg-2 col-form-label-lg' }).text(name),
+                                    $('<input/>', { name: name, id: name + '-input', type: type, min: min, max: max, value: value, class: 'form-control', onchange: 'updateError()'})
+                                );
+
+                            }
+
+                        }
+                        //status is failure
+                        else {
+                            $('.jsonError').text(jsonResponse.message);
+                            $('.jsonError').show();
+                        }
+                    }
+                });
+        }
+        //Invalid params
+        else {
+            $('.jsonError').text("Invalid Parameters");
+            $('.jsonError').show();
+        }
+    }
+
+    /**
+     * When "Log Your Mood" button is clicked, submit a Wellness Object with
+	 * values based on the sliders and add the object to the database
+     */
+    function submitWellness() {
+        //creating an empty array to hold the wellness params
+        var wellness = [];
+
+        //setting the different wellness params to what was set in the sliders
+        wellness["mood"] = document.getElementById('mood-input').value;
+        wellness["sleep"] = document.getElementById('sleep-input').value;
+        wellness["thoughts"] = document.getElementById('thoughts-input').value;
+        wellness["energy"] = document.getElementById('energy-input').value;
+
+        //building a string to append to the url
+        var wellnessString = "{\"mood\":" + wellness['mood'] +
+            ",\"energy\":" + wellness['energy'] +
+            ",\"sleep\":" + wellness['sleep'] +
+            ",\"thoughts\":" + wellness['thoughts'] + "}"
+
+		//perform ajax call to post values from sliders to a Wellness object
+        $.ajax(
+            {
+                url: "../howareyoufeeling/submitanswers/" + wellnessString,
+                type: 'POST',
+                dataType: 'json',
+
+                success: function (jsonResponse) {
+
+                    //Deal with the response
+                    if (jsonResponse.status == "success") {
+                        //move to the profile page
+                        location.href = "../profile";
+                    }
+                    else {
+                        $('.jsonError').text(jsonResponse.message);
+                        $('.jsonError').show();
+                    }
+                }
+            }
+        );
+    }
+
+    //hide the error message once the user has started to fix their problem
+    function updateError() {
+        $('.jsonError').hide();
+    }
+
+    //hide all nav items except the logout
+    function showLogout() {
+    $('.sidebar-nav').children().not('#logout_link').hide();
+    }
+
+
+    //Load the page load questions
+    $(function () {
+        $('.jsonError').hide();
+        $('#wellnessForm').hide();
+        showLogout();
+
+        getWellnessQuestions();
+
+    });
+
+
+
+
+</script>
+{% endblock %}
+{% block body %}
+<div id="mainWrapper" class="col-md-12 col-lg-7">
+    <div id="headerText" class="row rounded bg-light mb-3 p-2 pl-3">
+        <h1 id="welcome"></h1>
+    </div>
+    <div id="wellnessForm">
+        <div class="row rounded bg-danger mb-3 p-2 jsonError "></div>
+
+        <div id="mood" class="form-group row rounded bg-light mb-3 p-2 pl-3">
+        </div>
+        <div id="energy" class="form-group row rounded bg-light mb-3 p-2 pl-3">
+        </div>
+        <div id="sleep" class="form-group row rounded bg-light mb-3 p-2 pl-3">
+        </div>
+        <div id="thoughts" class="form-group row rounded bg-light mb-3 p-2 pl-3">
+        </div>
+        <div class="form-group row justify-content-center">
+            <button id="submit" onclick="submitWellness()" class="btn btn-primary btn-lg">Log your mood</button>
+        </div>
+    </div>
+
+</div>
+
+{% endblock %}

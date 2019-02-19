@@ -1,0 +1,21 @@
+﻿{
+  "status": "success",
+  "data": {
+    "userID": "10",
+    "messages": [
+      {
+        "userSent": 0,
+        "date": "1-13-2018",
+        "time": "12:00:00",
+        "messageContent": "You're a dead man"
+      },
+      {
+        "userSent": 1,
+        "date": "1-13-2018",
+        "time": "11:59:00",
+        "messageContent": "sry..."
+      }
+    ]
+  },
+  "message": ""
+}
